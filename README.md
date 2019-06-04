@@ -141,7 +141,7 @@ Model2: Random Forest
 
 Now let us try to apply the Random Forest algorithm.
 
-    ##first model
+    ##second model
 
 
     model2 <- randomForest(X..classe...~., data= training)
