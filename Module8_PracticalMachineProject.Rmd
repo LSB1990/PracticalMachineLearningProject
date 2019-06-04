@@ -1,0 +1,143 @@
+---
+title: "PracticalMachineLearning"
+author: "Ludovic"
+date: "May 21, 2019"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set( warning=FALSE, message=FALSE, include=TRUE,echo = TRUE)
+```
+
+## Executive summary
+
+One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, our goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants and predict the manner in which they did the exercise. 
+
+This is the "classe" variable in the training set. 
+
+
+All code and detailed results can be found in appendix.
+
+## Pre-work: Package and Data
+
+First we are going to load all the package we need: 
+```{r package}
+library(caret)
+library(ggplot2)
+library(dplyr)
+
+library(rpart)
+library(randomForest)
+```
+
+Now let us look at the data we want to consider. We have a training set and a testing set we are going to look at the training set and construct our model on it and will test our out-of-sample on the testing set. 
+```{r rawdata}
+
+
+rawdatatrain <- read.csv("training.csv",sep=",",header = TRUE,quote = "", na.strings = c("NA",""," \" \" "))
+rawdatatest <- read.csv("testing.csv",sep=",",header = TRUE,quote = "", na.strings = c("NA",""," \" \" "))
+
+```
+Now we are going to process the data. First we are going to remove the na's columns to remove irrelevant variable. Then we are going to also remove the one that have a variance near zero since they will not have a big impact on the model. 
+Finally by looking at the remaining variable we see that the first column are also irrelevant (name of the subject and so on)
+
+```{r}
+###let us remove NA columns
+
+datatrain <- rawdatatrain[,colSums(is.na(rawdatatrain))==0]
+
+
+
+
+NeZ <- nearZeroVar(datatrain, saveMetrics=TRUE) ##let us remove Near zero variance variable 
+datatrain <- datatrain[,NeZ$nzv==FALSE]
+
+datatrain <- datatrain[,-c(1:5)]  ###remove first 5 irrelevant column
+```
+
+
+Now that we have our dataset ready and more compact. We can do a partition of it in order to do an internal validation of our model. 
+
+```{r}
+
+## we are going to partition now, in order to have a training set and a cross validation set
+
+set.seed(333)
+inTrain <-  createDataPartition(y=datatrain$X..classe..., p=0.7, list=FALSE)
+training <- datatrain[inTrain,]
+valid <- datatrain[-inTrain,]
+
+dim(training)
+dim(valid)
+
+```
+
+We are finally ready now to try to use some predictive model. 
+
+## Model1: Classification tree
+
+Now we are going to try to fit a first model. In this part we are goint to use the calssification tree algorithm. We are going to introduce a k-fold control set to 10.
+
+```{r}
+##first model
+fitControl <- trainControl(method='cv', number = 10)
+model1 <- train(
+        X..classe...~ ., 
+        data=training,
+        trControl=fitControl,
+        method='rpart'
+)
+
+
+predictions <- predict(model1, newdata=valid)
+confusionMatrix(predictions, valid$X..classe...)
+
+```
+
+We can see that the accuracy is really low (~0.5) and therefore the out of sample error (1-accuracy on predicted) is around 0.5 (which is relatively big). From there and by looking at the confusion matrix we can conclude that our first model does not seems to be accurate enough. 
+
+## Model2: Random Forest
+
+Now let us try to apply the Random Forest algorithm. 
+```{r}
+##first model
+
+
+model2 <- randomForest(X..classe...~., data= training)
+
+
+predictions2 <- predict(model2, newdata=valid)
+confusionMatrix(predictions2, valid$X..classe...)
+
+
+
+```
+
+We can see that the accuracy is now way better (aournd 0.99, see above) and therefore the out of sample error is way smaller (therefore less than 0.01). 
+Also we can check that the confusion matrix is given good prediction as well. 
+
+##Model3: lda
+
+Let's try to fit a last model to compare with our two precedent results. For the sake of the exercise more than for the accurate precise results, we are going to assumes a normal distribution for each variable, a variable  mean which is spicific, and a common variance. Doing so, we can use the linear discirminant analysis (lda) method to fit our data. Let see  what results do we get:
+```{r}
+
+model3 <- train(X..classe...~., training, method = "lda")
+predictions3 <- predict(model3, newdata=valid)
+confusionMatrix(predictions3, valid$X..classe...)
+
+```
+
+
+We can see that in this case the accuracy is above the classification tree algorithm but we are below the accuracy of the random forest (and the other way around for the out of sample error). Therefore we are going to use the random forest algorithm that have a pretty good accuracy (and therefore a small out of sample error) to predict our final testing set.
+
+
+##Applying to the testing set. 
+
+We can now apply this model to the test set and we get the following prediction results
+
+```{r}
+knitr::kable(data.frame(rawdatatest$X.,rawdatatest$X..user_name..,predict(model2,rawdatatest)))
+```
+
