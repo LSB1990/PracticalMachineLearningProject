@@ -9,7 +9,7 @@ which they did the exercise.
 
 This is the "classe" variable in the training set.
 
-All code and detailed results can be found in appendix.
+
 
 Pre-work: Package and Data
 --------------------------
